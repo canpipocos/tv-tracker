@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src https:; connect-src 'self' https://api.github.com https://api.tvmaze.com; base-uri 'none'; form-action 'none'">
+<title>TV Tracker</title>
+<style>
+:root { color-scheme: light dark; --bg:#fbf6f1; --card:#fffdfb; --ink:#2b2833; --muted:#6a6573; --line:#ece4dc; --accent:#a23b5a; --warn:#fbe3ee; --tab:#dcd5f6; }
+@media (prefers-color-scheme: dark) { :root { --bg:#1b1922; --card:#26242e; --ink:#f0edf3; --muted:#aaa5b3; --line:#3a3743; --accent:#f0a0ba; --warn:#4a2c3a; --tab:#4b4378; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+main { max-width:820px; margin:auto; padding:24px 16px 64px; }
+header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+h1 { font-size:24px; margin:0; }
+.muted { color:var(--muted); font-size:14px; }
+button, select { font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:7px; padding:5px 10px; cursor:pointer; }
+#search { display:block; width:100%; margin-top:16px; font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:7px; padding:8px 12px; }
+nav { display:flex; gap:6px; flex-wrap:wrap; margin:18px 0; }
+nav button.on { background:var(--tab); border-color:var(--tab); font-weight:600; }
+.alerts { background:var(--warn); border-radius:8px; padding:10px 14px; margin-top:16px; font-size:14px; }
+.alerts div + div { margin-top:3px; }
+.show { background:var(--card); border:1px solid var(--line); border-radius:9px; margin-bottom:8px; }
+.row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 14px; cursor:pointer; }
+.name { font-weight:600; }
+.when { text-align:right; white-space:nowrap; font-size:14px; }
+.flag { color:var(--accent); font-size:13px; }
+.detail { border-top:1px solid var(--line); padding:12px 14px; }
+.tools { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; font-size:14px; }
+.season { display:flex; justify-content:space-between; width:100%; margin:6px 0 4px; font-size:14px; font-weight:600; text-align:left; }
+.season .muted { font-weight:400; color:inherit; }
+.tvsearch { margin-top:12px; }
+.tvcard { display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:9px; margin-bottom:8px; padding:11px 14px; }
+.poster { width:40px; height:58px; flex:none; border-radius:4px; object-fit:cover; background:var(--line); }
+.title { display:flex; align-items:center; gap:12px; min-width:0; }
+.rec-flex { display:flex; gap:12px; }
+.rec-flex .poster { width:64px; height:92px; }
+.rec-body { flex:1; min-width:0; }
+#alerts { margin-top:16px; overflow:clip; }
+.alert-item { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 14px; margin-bottom:6px; font-size:14px; cursor:pointer; touch-action:pan-y; user-select:none; }
+#tombs { position:sticky; top:8px; z-index:5; overflow:clip; }
+.tomb { background:var(--warn); border-radius:8px; padding:10px 14px; margin-bottom:8px; font-weight:600; cursor:grab; touch-action:pan-y; user-select:none; }
+input[type="checkbox"] { appearance:none; -webkit-appearance:none; width:13px; height:13px; flex:none; margin:0; vertical-align:-1px; border:1.5px solid var(--muted); border-radius:50%; background:transparent; cursor:pointer; }
+input[type="checkbox"]:checked { background:var(--accent); border-color:var(--accent); }
+input[type="checkbox"]:indeterminate { background:linear-gradient(90deg, var(--accent) 50%, transparent 50%); border-color:var(--accent); }
+input[type="checkbox"]:disabled { opacity:.35; cursor:default; }
+.tools-bottom { margin:14px 0 0; }
+.rec { padding:11px 14px; }
+.heads { display:flex; gap:8px; margin-top:8px; }
+.heads img { width:56px; height:56px; border-radius:50%; object-fit:cover; object-position:top; background:var(--line); }
+.rec-tools { margin:8px 0 0; justify-content:space-between; }
+.remove { margin-left:auto; color:var(--accent); }
+.seasonbar { display:flex; align-items:center; gap:8px; }
+.seasonbar .season { flex:1; min-width:0; }
+.ep { display:flex; align-items:center; gap:9px; padding:3px 0; font-size:14px; }
+.ep label { flex:1; min-width:0; }
+.ep.future { color:var(--muted); }
+.plot { color:var(--muted); font-size:13px; margin:0 0 6px 24px; }
+</style>
+</head>
+<body>
+<main>
+  <div id="tombs"></div>
+  <header>
+    <div><h1>TV Tracker</h1><div class="muted" id="sync"></div></div>
+    <button id="refresh">Check for updates</button>
+  </header>
+  <div id="alerts"></div>
+  <div id="undo"></div>
+  <input id="search" type="search" placeholder="Search all shows" aria-label="Search all shows" autocomplete="off">
+  <nav id="tabs"></nav>
+  <div id="list"></div>
+</main>
+<script src="cloud.js"></script>
+<script>
+function savedView() { try { return JSON.parse(sessionStorage.getItem("view")) || {}; } catch (e) { return {}; } }
+const view = savedView();
+let state = null, tab = view.tab || "Watching", open = view.open || null, timer = null, pageText = null;
+const seasonOpen = view.seasons || {};  // remembers seasons opened or closed by hand
+const TABS = ["Watching", "Upcoming", "Waitlist", "Renewed", "All", "☠️", "Others", "For You"];
+if (!TABS.includes(tab)) tab = "Watching";  // a remembered tab may no longer exist
+const STATUSES = ["watch_now", "wait", "wait_list", "finished"];
+const STATUS_LABELS = {watch_now:"Watching", wait:"Renewed", wait_list:"Waitlist", stopped:"Stopped", finished:"Finished"};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const code = e => e.label ? e.label : Number.isInteger(e.e) ? "E" + String(e.e).padStart(2, "0") : "Special";
+const pretty = d => new Date(d + "T12:00:00").toLocaleDateString(undefined, {day:"numeric", month:"short", year:"numeric"});
+
+function sheetDay(text) {
+  if (!/^\d{1,2} [A-Za-z]{3,} \d{4}$/.test(text || "")) return null;
+  const d = new Date(text + " 12:00");
+  return isNaN(d) ? null : d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function facts(s) {
+  const seen = new Set(s.watched);
+  const eps = s.episodes;
+  const backlog = eps.filter(e => e.date && e.date <= state.today && !seen.has(e.id));
+  const next = eps.filter(e => e.date && e.date >= state.today && !seen.has(e.id))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.s - b.s || a.e - b.e)[0];
+  // A release date known before any episodes are listed; vague ones like "2027" don't count.
+  const announced = [s.next_premiere, sheetDay(s.csv_date)].filter(d => d && d >= state.today).sort()[0];
+  return {seen, backlog, next, announced};
+}
+
+// True for a season still to come whose episodes all release on the same day.
+function fullDrop(s, season) {
+  const eps = s.episodes.filter(e => e.s === season);
+  return eps.length > 1 && eps[0].date >= state.today && eps.every(e => e.date === eps[0].date);
+}
+
+function line(s, f) {
+  if (f.backlog.length && tab === "Watching" && !query) return Number.isInteger(f.backlog[0].e) ? "Ep. " + f.backlog[0].e : code(f.backlog[0]);
+  if (f.backlog.length) return `<b>${f.backlog.length}</b> to ${s.mangaupdates_id ? "read" : "watch"} · next ${code(f.backlog[0])}`;
+  if (f.next) return `${s.full_drop || fullDrop(s, f.next.s) ? "Full season" : code(f.next)} · ${pretty(f.next.date)}`;
+  if (f.announced) return (s.full_drop ? "Full season · " : "") + pretty(f.announced);
+  if (s.tvmaze_status === "Ended") return "Ended";
+  if (s.status === "stopped") return "up to date";
+  if (/^tba$/i.test(s.csv_date)) return "";
+  return esc(s.csv_date || s.tvmaze_status || "no date yet");
+}
+
+let query = "", undo = null, undoTimer = null;
+const plain = t => (t || "").normalize("NFD").toLowerCase().replace(/[^a-z0-9 ]/g, "");
+
+function chosen() {
+  if (query) {
+    const wanted = plain(query);
+    return state.shows.filter(s => plain(s.name).includes(wanted) || plain(s.tvmaze_name).includes(wanted))
+      .map(s => [s, facts(s)]).sort((a, b) => a[0].name.localeCompare(b[0].name));
+  }
+  const ended = s => s.tvmaze_status === "Ended";
+  // Stopped shows with no ticks were started, just never recorded, so they stay in Stopped.
+  const onePiece = s => s.name === "One Piece (Anime)" || s.name === "One Piece (Manga)";
+  const pinnedWait = s => { const f = facts(s); return s.other_wait && !f.next && !f.backlog.length; };  // leaves once episodes appear
+  const otherWait = s => s.match !== "ok" || onePiece(s) || pinnedWait(s);  // kept out of the regular tabs
+  const waitlisted = s => s.status !== "finished" && !otherWait(s) && ((s.status !== "stopped" && !s.watched.length) || facts(s).backlog.length >= 7);  // not started, or 7+ piled up
+  const byName = (a, b) => a[0].name.localeCompare(b[0].name);
+  if (tab === "☠️") return state.shows.filter(onePiece).map(s => [s, facts(s)]).sort(byName);
+  if (tab === "Waitlist") return state.shows.filter(waitlisted).map(s => [s, facts(s)]).sort(byName);
+  const active = state.shows.filter(s => s.status !== "finished" && (!ended(s) || facts(s).backlog.length) && !waitlisted(s) && !otherWait(s));  // ended shows stay until finished
+  const rows = active.map(s => [s, facts(s)]);
+  const inProgress = s => s.status !== "stopped";
+  if (tab === "Watching") return rows.filter(([s, f]) => f.backlog.length && inProgress(s)).sort(([, a], [, b]) => a.backlog.length - b.backlog.length);
+  if (tab === "Upcoming") {
+    const when = f => f.next ? f.next.date : f.announced;
+    return rows.filter(([s, f]) => when(f) && !f.backlog.length && inProgress(s)).sort(([, a], [, b]) => when(a).localeCompare(when(b)));
+  }
+  if (tab === "Renewed") return rows.filter(([s, f]) => !f.next && !f.announced && !f.backlog.length && inProgress(s));
+  if (tab === "Others") return state.shows.filter(s => otherWait(s) && !onePiece(s)).map(s => [s, facts(s)]).sort(byName);
+  return state.shows.map(s => [s, facts(s)]).sort((a, b) => a[0].name.localeCompare(b[0].name));
+}
+
+function detail(s, f) {
+  const toWatch = n => f.backlog.some(e => e.s === n);
+  // Seasons to watch first, earliest first; the rest newest first.
+  const seasons = [...new Set(s.episodes.map(e => e.s))].sort((a, b) => toWatch(b) - toWatch(a) || (toWatch(a) ? a - b : b - a));
+  const options = STATUSES.map(x => `<option value="${x}" ${x === s.status ? "selected" : ""}>${STATUS_LABELS[x]}</option>`).join("");
+  const current = (f.backlog[0] || f.next || {s: seasons[0]}).s;
+  const body = seasons.map(n => {
+    const eps = s.episodes.filter(e => e.s === n);
+    const key = s.name + "|" + n;
+    const expanded = key in seasonOpen ? seasonOpen[key] : n === current;
+    const done = eps.filter(e => f.seen.has(e.id)).length;
+    const aired = eps.filter(e => e.date && e.date <= state.today);
+    const airedSeen = aired.filter(e => f.seen.has(e.id)).length;
+    const box = `<input type="checkbox" data-all="${n}" aria-label="Mark all of ${esc((s.season_names || {})[n] || "season " + n)} as ${s.mangaupdates_id ? "read" : "watched"}" ${aired.length && airedSeen === aired.length ? "checked" : ""} ${aired.length ? "" : "disabled"} data-partial="${airedSeen && airedSeen < aired.length ? 1 : 0}">`;
+    return `<div class="seasonbar">${box}<button class="season" data-season="${n}" aria-expanded="${expanded}"><span>${esc((s.season_names || {})[n] || "Season " + n)}${fullDrop(s, n) ? " · Full season" : ""}</span><span class="muted">${done}/${eps.length} ${s.mangaupdates_id ? "read" : "watched"}</span></button></div>` + (!expanded ? "" : eps.map(e => {
+    const future = !e.date || e.date > state.today;
+    return `<div class="ep ${future ? "future" : ""}"><label><input type="checkbox" data-ep="${e.id}" ${f.seen.has(e.id) ? "checked" : ""}> ${code(e)}${e.name && !/^tba$/i.test(e.name) ? " - " + esc(e.name) : ""}</label>
+      <span class="muted">${e.date && !e.undated ? pretty(e.date) + (e.projected ? " (expected)" : "") : ""}</span>
+      </div>${!future && !f.seen.has(e.id) && e.plot ? `<div class="plot">${esc(e.plot)}</div>` : ""}`;
+    }).join(""));
+  }).join("");
+  return `<div class="detail">${body || `<div class="muted">No episodes listed yet.</div>`}
+    <div class="tools tools-bottom"><select data-status aria-label="Status">${options}</select>
+    <button class="remove" data-remove>Remove show</button></div></div>`;
+}
+
+function render() {
+  const when = state.last_sync ? "Updated " + new Date(state.last_sync).toLocaleString() : "Not synced yet";
+  document.getElementById("sync").textContent = state.syncing ? "Checking TVmaze…" : when;
+  document.getElementById("refresh").disabled = state.syncing;
+  const alertBox = document.getElementById("alerts");
+  const alertHtml = (state.alerts || []).map(a => `<div class="alert-item" data-date="${esc(a.date)}" data-text="${esc(a.text)}">${esc(a.text)} <span class="muted">${pretty(a.date)}</span></div>`).join("");
+  if (alertBox.dataset.html !== alertHtml) { alertBox.innerHTML = alertHtml; alertBox.dataset.html = alertHtml; }  // don't disturb a swipe
+  const tombs = document.getElementById("tombs");
+  const tombHtml = (state.cancellations || []).map(c => `<div class="tomb" data-name="${esc(c.name)}">🪦 ${esc(c.name)}: cancelled, no season ${c.season}</div>`).join("");
+  if (tombs.dataset.html !== tombHtml) { tombs.innerHTML = tombHtml; tombs.dataset.html = tombHtml; }  // don't disturb a swipe
+  document.getElementById("undo").innerHTML = undo ? `<div class="alerts">Removed ${esc(undo)} <button data-undo>Undo</button></div>` : "";
+  document.getElementById("tabs").innerHTML = TABS.map(t => `<button class="${t === tab && !query ? "on" : ""}" data-tab="${t}">${t}</button>`).join("");
+  if (tab === "For You" && !query) return renderRecommendations();
+  const rows = chosen().sort((a, b) => (b[1].backlog.length > 0) - (a[1].backlog.length > 0));
+  document.getElementById("list").innerHTML = rows.map(([s, f], i) => `<div class="show" data-i="${i}">
+    <div class="row"><div class="title">${thumb(s.poster)}<div><div class="name">${({"One Piece (Manga)":"📖 ", "One Piece (Anime)":"🐲 "})[s.name] || ""}${esc(s.name)}</div>${s.match !== "ok" && s.match !== "manual" ? `<div class="flag">${s.match === "review" ? "Matched to " + esc(s.tvmaze_name) + ", please check" : "Not found on TVmaze"}</div>` : ""}</div></div>
+    <div class="when">${line(s, f)}</div></div>
+    ${open === s.name ? detail(s, f) : ""}</div>`).join("") || `<p class="muted">Nothing here.</p>`;
+  document.querySelectorAll(".show").forEach(el => wire(el, rows[+el.dataset.i]));
+  renderTvSearch();
+}
+
+const thumb = url => url ? `<img class="poster" src="${esc(url)}" alt="" loading="lazy">` : `<div class="poster"></div>`;
+let tvResults = null;
+
+// Below the user's own matches: look the name up on TVmaze and add it to the tracker.
+function renderTvSearch() {
+  if (!query) return;
+  const list = document.getElementById("list");
+  const found = tvResults && tvResults.q === query ? tvResults.items : null;
+  const cards = !found ? "" : found.map(r => `<div class="tvcard"><div class="title">${thumb(r.poster)}<div><div class="name">${esc(r.name)}</div>
+    <div class="muted">${[r.year, r.channel, r.status].filter(Boolean).map(esc).join(" · ")}</div></div></div>
+    ${r.tracked ? `<span class="muted">In your list</span>` : `<button data-tvadd="${r.id}">Add</button>`}</div>`).join("") || `<p class="muted">No matches on TVmaze.</p>`;
+  list.insertAdjacentHTML("beforeend", `<div class="tvsearch">${found ? "" : `<button id="tvsearch">Search TVmaze for "${esc(query)}"</button>`}${cards}</div>`);
+  const button = document.getElementById("tvsearch");
+  if (button) button.onclick = async () => {
+    button.disabled = true;
+    const q = query;
+    tvResults = {q, items: await (await fetch("/api/search?q=" + encodeURIComponent(q))).json()};
+    render();
+  };
+  list.querySelectorAll("[data-tvadd]").forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    await post("/api/add", {id:+b.dataset.tvadd});
+    found.find(r => r.id === +b.dataset.tvadd).tracked = true;
+    render();
+  });
+}
+
+function recFacts(r) {
+  const seasons = r.season ? `${r.season} season${r.season > 1 ? "s" : ""}` : "";
+  const status = r.status === "Ended" ? "Ended" : r.season === 1 || r.status === "In Development" ? "Not released yet" : "Still running";
+  const length = r.runtime ? (r.runtime <= 35 ? "~20'" : "~40'-1h") : "";
+  return [seasons, status, length].filter(Boolean).join(" · ");
+}
+
+function renderRecommendations() {
+  const list = document.getElementById("list");
+  const recs = state.recommendations || [];
+  list.innerHTML = recs.map(r => `<div class="show"><div class="rec rec-flex">${thumb(r.poster)}<div class="rec-body">
+    <div class="name">${esc(r.name)}</div>
+    ${r.universe ? `<div class="muted">${esc(r.why)}</div>` : ""}
+    <div class="muted">${recFacts(r)}</div>
+    ${(r.genres || []).length ? `<div class="muted">${esc(r.genres.join(", "))}</div>` : ""}
+    ${(r.cast || []).some(c => c.image) ? `<div class="heads">${r.cast.filter(c => c.image).map(c => {
+      const who = esc(c.character ? `${c.character} (${c.name})` : c.name);
+      return `<img src="${esc(c.image)}" alt="${who}" title="${who}" loading="lazy">`;
+    }).join("")}</div>` : ""}
+    <div class="tools rec-tools"><span>${r.season > 1 ? "Season " + r.season + " · " : ""}${pretty(r.date)}${r.channel ? " · " + esc(r.channel) : ""}</span>
+      <span class="rec-buttons"><button data-add="${r.id}">Add</button> <button data-skip="${r.id}">Not for me</button></span></div>
+  </div></div></div>`).join("") || `<p class="muted">No suggestions yet. Click "Check for updates".</p>`;
+  list.querySelectorAll("[data-add]").forEach(b => b.onclick = () => post("/api/rec", {id:+b.dataset.add, action:"add"}));
+  list.querySelectorAll("[data-skip]").forEach(b => b.onclick = () => post("/api/rec", {id:+b.dataset.skip, action:"skip"}));
+}
+
+function wire(el, [s]) {
+  el.querySelector(".row").onclick = () => { open = open === s.name ? null : s.name; render(); };
+  el.querySelectorAll("[data-season]").forEach(b => b.onclick = () => {
+    seasonOpen[s.name + "|" + b.dataset.season] = b.getAttribute("aria-expanded") !== "true";
+    render();
+  });
+  el.querySelectorAll("[data-all]").forEach(c => {
+    c.indeterminate = c.dataset.partial === "1";
+    c.onchange = () => {
+      const ids = s.episodes.filter(e => e.s === +c.dataset.all && e.date && e.date <= state.today).map(e => e.id);
+      tick(s, ids, c.checked);
+    };
+  });
+  el.querySelectorAll("[data-ep]").forEach(c => c.onchange = () => tick(s, [+c.dataset.ep], c.checked));
+  const remove = el.querySelector("[data-remove]");
+  if (remove) remove.onclick = () => {
+    if (!confirm(`Remove ${s.name}?\n\nIt will disappear from every tab, along with your progress.`)) return;
+    open = null;
+    undo = s.name;
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(() => { undo = null; render(); }, 15000);
+    post("/api/remove", {show:s.name});
+  };
+  const select = el.querySelector("[data-status]");
+  if (select) select.onchange = () => post("/api/status", {show:s.name, status:select.value});
+}
+
+// Saves ticks; the first tick in a show's confirmed final season gets the farewell.
+function tick(s, ids, watched) {
+  const finale = s.episodes.filter(e => e.s === s.final_season);
+  const goodbye = watched && finale.some(e => ids.includes(e.id)) && !finale.some(e => s.watched.includes(e.id));
+  post("/api/watch", {show:s.name, ids, watched}).then(() => {
+    if (goodbye) alert(`🥀 Saying goodbye to ${s.name}. Let's have a moment of silence.`);
+  });
+}
+
+async function post(path, body) {
+  const res = await fetch(path, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  state = await res.json();
+  render();
+  poll();
+}
+
+function poll() {
+  clearTimeout(timer);
+  if (state.syncing) timer = setTimeout(async () => {
+    try {
+      if ((await (await fetch("/api/syncing")).json()).syncing) return poll();
+      state = await (await fetch("/api/state")).json();
+      render();
+    } catch (e) {}  // server briefly down: watchForChanges picks it back up
+    poll();
+  }, 250);
+}
+
+document.getElementById("tabs").onclick = e => { if (e.target.dataset.tab) { tab = e.target.dataset.tab; open = null; query = ""; document.getElementById("search").value = ""; render(); } };
+document.getElementById("search").oninput = e => { query = e.target.value.trim(); open = null; render(); };
+document.getElementById("undo").onclick = e => {
+  if (e.target.dataset.undo === undefined) return;
+  const show = undo;
+  undo = null;
+  clearTimeout(undoTimer);
+  post("/api/restore", {show});
+};
+// Swipe or drag right to dismiss; with clickDismisses, a mouse click does it too.
+function swipeAway(container, selector, dismiss, clickDismisses) {
+  let swipe = null;
+  container.onpointerdown = e => {
+    const el = e.target.closest(selector);
+    if (!el) return;
+    swipe = {el, x: e.clientX, dx: 0, mouse: e.pointerType === "mouse"};
+    el.setPointerCapture(e.pointerId);
+    el.style.transition = "none";
+  };
+  container.onpointermove = e => {
+    if (!swipe) return;
+    swipe.dx = Math.max(0, e.clientX - swipe.x);
+    swipe.el.style.transform = `translateX(${swipe.dx}px)`;
+    swipe.el.style.opacity = 1 - Math.min(swipe.dx / swipe.el.offsetWidth, 0.8);
+  };
+  const end = cancelled => {
+    if (!swipe) return;
+    const {el, dx, mouse} = swipe;
+    swipe = null;
+    el.style.transition = "transform .2s, opacity .2s";
+    const clicked = clickDismisses && mouse && dx < 5 && !cancelled;
+    if (clicked || dx > el.offsetWidth * 0.35) {
+      el.style.transform = "translateX(110%)";
+      el.style.opacity = 0;
+      setTimeout(() => dismiss(el), 200);
+    } else {
+      el.style.transform = "";
+      el.style.opacity = "";
+    }
+  };
+  container.onpointerup = () => end(false);
+  container.onpointercancel = () => end(true);
+}
+swipeAway(document.getElementById("tombs"), ".tomb", el => post("/api/cancelled", {name: el.dataset.name}), false);
+swipeAway(document.getElementById("alerts"), ".alert-item", el => post("/api/alert-read", {date: el.dataset.date, text: el.dataset.text}), true);
+document.getElementById("refresh").onclick = () => post("/api/sync", {});
+fetch("/api/state").then(r => r.json()).then(s => { state = s; render(); poll(); });
+
+// Reload when the page itself changes; redraw whenever the data changes.
+async function watchForChanges() {
+  try {
+    const page = await (await fetch("/", {cache: "no-store"})).text();
+    if (pageText === null) pageText = page;
+    else if (page !== pageText) {
+      try { sessionStorage.setItem("view", JSON.stringify({tab, open, seasons: seasonOpen})); } catch (e) {}
+      location.reload();
+      return;
+    }
+    const latest = await (await fetch("/api/state")).json();
+    if (state && JSON.stringify(latest) !== JSON.stringify(state)) { state = latest; render(); poll(); }
+  } catch (e) {}  // server briefly down: try again next round
+  setTimeout(watchForChanges, 3000);
+}
+window.cloudUpdate = s => { state = s; render(); poll(); };
+if (!window.cloud) watchForChanges();  // the web version refreshes itself
+</script>
+</body>
+</html>
