@@ -134,7 +134,12 @@ function line(s, f) {
   return esc(s.csv_date || s.tvmaze_status || "no date yet");
 }
 
-let query = "", undo = null, undoTimer = null;
+let query = "", undo = null, undoTimer = null;  // undo: {html, run} for the last removal or tick
+function offerUndo(html, run, seconds) {
+  undo = {html, run};
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => { undo = null; render(); }, seconds * 1000);
+}
 const plain = t => (t || "").normalize("NFD").toLowerCase().replace(/[^a-z0-9 ]/g, "");
 
 function chosen() {
@@ -235,7 +240,7 @@ function render() {
   const tombs = document.getElementById("tombs");
   const tombHtml = (state.cancellations || []).map(c => `<div class="tomb" data-name="${esc(c.name)}">🪦 ${esc(c.name)}: cancelled, no season ${c.season}</div>`).join("");
   if (tombs.dataset.html !== tombHtml) { tombs.innerHTML = tombHtml; tombs.dataset.html = tombHtml; }  // don't disturb a swipe
-  document.getElementById("undo").innerHTML = undo ? `<div class="alerts">Removed ${esc(undo)} <button data-undo>Undo</button></div>` : "";
+  document.getElementById("undo").innerHTML = undo ? `<div class="alerts"><span>${undo.html}</span> <button data-undo>Undo</button></div>` : "";
   document.getElementById("tabs").innerHTML = TABS.map(t => `<button class="${t === tab && !query ? "on" : ""}" data-tab="${t}">${t}</button>`).join("");
   if (tab === "For You" && !query) return renderRecommendations();
   const rows = chosen().sort((a, b) => (b[1].backlog.length > 0) - (a[1].backlog.length > 0));
@@ -327,22 +332,25 @@ function wire(el, [s]) {
   if (remove) remove.onclick = () => {
     if (!confirm(`Remove ${s.name}?\n\nIt will disappear from every tab, along with your progress.`)) return;
     open = null;
-    undo = s.name;
-    clearTimeout(undoTimer);
-    undoTimer = setTimeout(() => { undo = null; render(); }, 15000);
+    offerUndo(`Removed ${esc(s.name)}`, () => post("/api/restore", {show:s.name}), 15);
     post("/api/remove", {show:s.name});
   };
   const select = el.querySelector("[data-status]");
   if (select) select.onchange = () => post("/api/status", {show:s.name, status:select.value});
 }
 
-// Saves ticks; the first tick in a show's confirmed final season gets the farewell.
+// Saves ticks with an Undo; the first tick in a show's confirmed final season gets the farewell.
 function tick(s, ids, watched) {
   const finale = s.episodes.filter(e => e.s === s.final_season);
   const goodbye = watched && finale.some(e => ids.includes(e.id)) && !finale.some(e => s.watched.includes(e.id));
-  post("/api/watch", {show:s.name, ids, watched}).then(() => {
-    if (goodbye) alert(`🥀 Saying goodbye to ${s.name}. Let's have a moment of silence.`);
-  });
+  const changed = ids.filter(id => s.watched.includes(id) !== watched);  // undo only puts back what this tick changed
+  const one = changed.length === 1 && s.episodes.find(e => e.id === changed[0]);
+  const verb = s.mangaupdates_id ? "read" : "watched";
+  const what = one ? code(one) : changed.length + (s.mangaupdates_id ? " chapters" : " episodes");
+  const html = (goodbye ? `🥀 Saying goodbye to ${esc(s.name)}. Let's have a moment of silence.<br>` : "")
+    + `${esc(s.name)}: ${what} marked as ${watched ? "" : "not "}${verb}`;
+  if (changed.length) offerUndo(html, () => post("/api/watch", {show:s.name, ids:changed, watched:!watched}), goodbye ? 15 : 10);
+  post("/api/watch", {show:s.name, ids, watched});
 }
 
 async function post(path, body) {
@@ -367,11 +375,11 @@ function poll() {
 document.getElementById("tabs").onclick = e => { if (e.target.dataset.tab) { tab = e.target.dataset.tab; open = null; query = ""; document.getElementById("search").value = ""; render(); } };
 document.getElementById("search").oninput = e => { query = e.target.value.trim(); open = null; render(); };
 document.getElementById("undo").onclick = e => {
-  if (e.target.dataset.undo === undefined) return;
-  const show = undo;
+  if (e.target.dataset.undo === undefined || !undo) return;
+  const run = undo.run;
   undo = null;
   clearTimeout(undoTimer);
-  post("/api/restore", {show});
+  run();
 };
 // Swipe or drag right to dismiss; with clickDismisses, a mouse click does it too.
 function swipeAway(container, selector, dismiss, clickDismisses) {
