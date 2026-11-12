@@ -29,6 +29,11 @@ nav button { flex:none; white-space:nowrap; background:none; border:0; border-bo
 nav button.on { color:var(--accent); border-bottom-color:var(--accent); }
 @keyframes toast-in { from { opacity:0; transform:translate(-50%, 8px); } }
 #undo .alerts { animation:toast-in .15s ease-out; position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:10; display:flex; align-items:center; gap:14px; max-width:calc(100% - 32px); background:var(--toast); color:var(--toast-ink); border-radius:10px; padding:10px 16px; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,.25); }
+.goodbye-back { position:fixed; inset:0; z-index:15; display:flex; align-items:center; justify-content:center; padding:16px; background:rgba(0,0,0,.35); }
+.goodbye-box { background:var(--card); color:var(--ink); border-radius:10px; padding:18px; max-width:360px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
+.goodbye-box p { margin:0 0 14px; font-size:15px; }
+.goodbye-buttons { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+.goodbye-buttons .primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
 #undo button { background:none; border:0; padding:0; color:var(--toast-accent); font-weight:600; }
 .show { background:var(--card); border:0; border-radius:10px; margin-bottom:8px; }
 .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 14px; cursor:pointer; }
@@ -83,6 +88,7 @@ input[type="checkbox"]:disabled { opacity:.35; cursor:default; }
   </header>
   <div id="alerts"></div>
   <div id="undo"></div>
+  <div id="goodbye"></div>
   <input id="search" type="search" placeholder="Search all shows" aria-label="Search all shows" autocomplete="off">
   <nav id="tabs"></nav>
   <div id="list"></div>
@@ -129,13 +135,14 @@ function line(s, f) {
   if (f.backlog.length) return `<b>${f.backlog.length}</b> to ${s.mangaupdates_id ? "read" : "watch"} · next ${code(f.backlog[0])}`;
   if (f.next) return `${s.full_drop || fullDrop(s, f.next.s) ? "Full season" : code(f.next)} · ${pretty(f.next.date)}`;
   if (f.announced) return (s.full_drop ? "Full season · " : "") + pretty(f.announced);
+  if (s.status === "finished") return "Finished";
   if (s.tvmaze_status === "Ended") return "Ended";
   if (s.status === "stopped") return "up to date";
   if (/^tba$/i.test(s.csv_date)) return "";
   return esc(s.csv_date || s.tvmaze_status || "no date yet");
 }
 
-let query = "", undo = null, undoTimer = null;  // undo: {html, run} for the last removal or tick
+let query = "", undo = null, undoTimer = null, farewell = null;  // farewell: show whose goodbye box is open  // undo: {html, run} for the last removal or tick
 function offerUndo(html, run, seconds) {
   undo = {html, run};
   clearTimeout(undoTimer);
@@ -241,6 +248,9 @@ function render() {
   const tombs = document.getElementById("tombs");
   const tombHtml = (state.cancellations || []).map(c => `<div class="tomb" data-name="${esc(c.name)}">🪦 ${esc(c.name)}: cancelled, no season ${c.season}</div>`).join("");
   if (tombs.dataset.html !== tombHtml) { tombs.innerHTML = tombHtml; tombs.dataset.html = tombHtml; }  // don't disturb a swipe
+  document.getElementById("goodbye").innerHTML = !farewell ? "" : `<div class="goodbye-back"><div class="goodbye-box" role="dialog" aria-label="Goodbye">
+    <p>🥀 Saying goodbye to ${esc(farewell)}. Let's have a moment of silence.</p>
+    <div class="goodbye-buttons"><button data-farewell="later">Not yet</button><button class="primary" data-farewell="done">I'm ready to say goodbye</button></div></div></div>`;
   document.getElementById("undo").innerHTML = undo ? `<div class="alerts"><span>${undo.html}</span> <button data-undo>Undo</button></div>` : "";
   document.getElementById("tabs").innerHTML = TABS.map(t => `<button class="${t === tab && !query ? "on" : ""}" data-tab="${t}">${t}</button>`).join("");
   if (tab === "For You" && !query) return renderRecommendations();
@@ -342,16 +352,21 @@ function wire(el, [s]) {
 
 // Saves ticks with an Undo; the first tick in a show's confirmed final season gets the farewell.
 function tick(s, ids, watched) {
-  const finale = s.episodes.filter(e => e.s === s.final_season);
-  const goodbye = watched && finale.some(e => ids.includes(e.id)) && !finale.some(e => s.watched.includes(e.id));
+  // Farewell when the last episode of a show that isn't coming back gets ticked: ended or cancelled on TVmaze,
+  // or a confirmed final season, with nothing left unticked.
+  const after = new Set(s.watched);
+  ids.forEach(i => watched ? after.add(i) : after.delete(i));
+  const notComingBack = s.tvmaze_status === "Ended" || (s.final_season && s.episodes.some(e => e.s === s.final_season))
+    || (state.cancellations || []).some(c => c.name === s.name);
+  const goodbye = watched && notComingBack && s.status !== "finished" && s.episodes.length
+    && s.episodes.every(e => after.has(e.id) || e.projected);
   const changed = ids.filter(id => s.watched.includes(id) !== watched);  // undo only puts back what this tick changed
   const one = changed.length === 1 && s.episodes.find(e => e.id === changed[0]);
   const verb = s.mangaupdates_id ? "read" : "watched";
   const what = one ? code(one) : changed.length + (s.mangaupdates_id ? " chapters" : " episodes");
-  const html = (goodbye ? `🥀 Saying goodbye to ${esc(s.name)}. Let's have a moment of silence.<br>` : "")
-    + `${what} marked as ${watched ? "" : "not "}${verb}`;
-  // A quick 2-second toast; the farewell stays longer so it can be read.
-  if (changed.length) offerUndo(html, () => post("/api/watch", {show:s.name, ids:changed, watched:!watched}), goodbye ? 15 : 2);
+  const html = `${what} marked as ${watched ? "" : "not "}${verb}`;
+  if (changed.length) offerUndo(html, () => { farewell = null; post("/api/watch", {show:s.name, ids:changed, watched:!watched}); }, 3);
+  if (goodbye) farewell = s.name;
   post("/api/watch", {show:s.name, ids, watched});
 }
 
@@ -376,6 +391,15 @@ function poll() {
 
 document.getElementById("tabs").onclick = e => { if (e.target.dataset.tab) { tab = e.target.dataset.tab; open = null; query = ""; document.getElementById("search").value = ""; render(); } };
 document.getElementById("search").oninput = e => { query = e.target.value.trim(); open = null; render(); };
+// "I'm ready" marks the show Finished: it leaves the other tabs and stays in All.
+document.getElementById("goodbye").onclick = e => {
+  const choice = e.target.dataset.farewell;
+  if (!choice) return;
+  const show = farewell;
+  farewell = null;
+  if (choice === "done") post("/api/status", {show, status:"finished"});
+  else render();
+};
 document.getElementById("undo").onclick = e => {
   if (e.target.dataset.undo === undefined || !undo) return;
   const run = undo.run;
