@@ -94,7 +94,35 @@ window.cloud = (() => {
     });
   }
 
+  // The last data seen on this phone, so the page opens at once and checks GitHub after.
+  const CACHE = "tv-data";
+  async function saveCache() {
+    try {
+      const c = await caches.open(CACHE);
+      await c.put("/tv/tracker", new Response(baseText, {headers: {"X-Sha": trackerSha || ""}}));
+      await c.put("/tv/pending", new Response(JSON.stringify({sha: pendingSha, list: pending})));
+    } catch (e) {}  // no cache: it just loads the slow way next time
+  }
+  async function loadCache() {
+    try {
+      const c = await caches.open(CACHE);
+      const [t, p] = await Promise.all([c.match("/tv/tracker"), c.match("/tv/pending")]);
+      if (!t || !p) return false;
+      const saved = await p.json();
+      baseText = await t.text();
+      trackerSha = t.headers.get("X-Sha") || null;
+      pendingSha = saved.sha;
+      pending = saved.list || [];
+      rebuild();
+      return true;
+    } catch (e) { return false; }
+  }
+
   async function signIn() {
+    if (read(TOKEN, "") && await loadCache()) {  // a bad key still gets caught: gh() asks for it again on 401
+      refresh(false).then(changed => { if (changed && window.cloudUpdate) window.cloudUpdate(current()); }).catch(() => {});
+      return;
+    }
     let message = "";
     while (true) {
       if (!read(TOKEN, "")) { const key = await askForKey(message); write(TOKEN, key); }
@@ -126,7 +154,7 @@ window.cloud = (() => {
     pendingSha = meta.sha;
     pending = JSON.parse(decode(meta.content));
     if (force || newTracker !== trackerSha) { baseText = await gh("/contents/tracker.json", {raw: true}); trackerSha = newTracker; }
-    if (changed) rebuild();
+    if (changed) { rebuild(); saveCache(); }
     return changed;
   }
 
