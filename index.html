@@ -133,10 +133,9 @@ function fullDrop(s, season) {
 function line(s, f) {
   if (f.backlog.length && tab === "Watching" && !query) return Number.isInteger(f.backlog[0].e) ? "Ep. " + f.backlog[0].e : code(f.backlog[0]);
   if (f.backlog.length) return `<b>${f.backlog.length}</b> to ${s.mangaupdates_id ? "read" : "watch"} · next ${code(f.backlog[0])}`;
+  if (s.status === "finished" || (s.tvmaze_status === "Ended" && !f.next)) return "Finished watching";  // all done, nothing coming
   if (f.next) return `${s.full_drop || fullDrop(s, f.next.s) ? "Full season" : code(f.next)} · ${pretty(f.next.date)}`;
   if (f.announced) return (s.full_drop ? "Full season · " : "") + pretty(f.announced);
-  if (s.status === "finished") return "Finished";
-  if (s.tvmaze_status === "Ended") return "Ended";
   if (s.status === "stopped") return "up to date";
   if (/^tba$/i.test(s.csv_date)) return "";
   return esc(s.csv_date || s.tvmaze_status || "no date yet");
