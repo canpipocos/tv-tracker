@@ -54,6 +54,8 @@ window.cloud = (() => {
           ids.forEach(i => current.add(i));
         } else ids.forEach(i => current.delete(i));
         show.watched = [...current].sort((x, y) => x - y);
+        if (!a.watched && show.status === "finished"  // unticking reopens a show said goodbye to
+            && show.episodes.some(e => e.date && e.date <= a.today && !e.projected && !current.has(e.id))) show.status = "watch_now";
       } else if (a.type === "status") show.status = a.status;
       else if (a.type === "remove") {
         s.shows.splice(s.shows.indexOf(show), 1);
