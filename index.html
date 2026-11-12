@@ -3,8 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src https:; connect-src 'self' https://api.github.com https://api.tvmaze.com; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src https:; connect-src 'self' https://api.github.com https://api.tvmaze.com; base-uri 'none'; form-action 'none'; manifest-src 'self'">
 <title>TV Tracker</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>try { const t = localStorage.getItem("theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}</script>
 <style>
 :root { color-scheme: light dark; --bg:#f5f6f8; --card:#ffffff; --ink:#1c1f26; --muted:#6a7280; --line:#d4d8df; --tabline:#e3e6eb; --sep:#eceef2; --accent:#0f766e; --danger:#c1272d; --tomb:#fff4d6; --tomb-ink:#6b4a00; --tomb-line:#f3dd9b; --toast:#1f2329; --toast-ink:#ffffff; --toast-accent:#5eead4; }
