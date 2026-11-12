@@ -173,7 +173,7 @@ function chosen() {
     return rows.filter(([s, f]) => when(f) && !f.backlog.length && inProgress(s)).sort(([, a], [, b]) => when(a).localeCompare(when(b)));
   }
   if (tab === "Renewed") return rows.filter(([s, f]) => !f.next && !f.announced && !f.backlog.length && inProgress(s));
-  if (tab === "Others") return state.shows.filter(s => otherWait(s) && !onePiece(s)).map(s => [s, facts(s)]).sort(byName);
+  if (tab === "Others") return state.shows.filter(s => otherWait(s) && !onePiece(s) && s.status !== "finished").map(s => [s, facts(s)]).sort(byName);
   return state.shows.map(s => [s, facts(s)]).sort((a, b) => a[0].name.localeCompare(b[0].name));
 }
 
@@ -199,7 +199,7 @@ function detail(s, f) {
       </div>${!f.seen.has(e.id) && e.plot ? `<div class="plot">${esc(e.plot)}</div>` : ""}`;
     }).join(""));
   }).join("");
-  return `<div class="detail">${body || `<div class="muted">No episodes listed yet.</div>`}
+  return `<div class="detail">${body || `<div class="muted">${s.archived ? "Watched before the tracker." : "No episodes listed yet."}</div>`}
     <div class="tools tools-bottom"><select data-status aria-label="Status">${options}</select>
     <button class="remove" data-remove>Remove show</button></div></div>`;
 }
