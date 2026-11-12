@@ -27,7 +27,8 @@ nav { display:flex; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; mar
 nav::-webkit-scrollbar { display:none; }
 nav button { flex:none; white-space:nowrap; background:none; border:0; border-bottom:2px solid transparent; border-radius:0; padding:10px 12px; color:var(--muted); font-size:14px; font-weight:600; }
 nav button.on { color:var(--accent); border-bottom-color:var(--accent); }
-#undo .alerts { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:10; display:flex; align-items:center; gap:14px; max-width:calc(100% - 32px); background:var(--toast); color:var(--toast-ink); border-radius:10px; padding:10px 16px; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,.25); }
+@keyframes toast-in { from { opacity:0; transform:translate(-50%, 8px); } }
+#undo .alerts { animation:toast-in .15s ease-out; position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:10; display:flex; align-items:center; gap:14px; max-width:calc(100% - 32px); background:var(--toast); color:var(--toast-ink); border-radius:10px; padding:10px 16px; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,.25); }
 #undo button { background:none; border:0; padding:0; color:var(--toast-accent); font-weight:600; }
 .show { background:var(--card); border:0; border-radius:10px; margin-bottom:8px; }
 .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 14px; cursor:pointer; }
@@ -348,8 +349,9 @@ function tick(s, ids, watched) {
   const verb = s.mangaupdates_id ? "read" : "watched";
   const what = one ? code(one) : changed.length + (s.mangaupdates_id ? " chapters" : " episodes");
   const html = (goodbye ? `🥀 Saying goodbye to ${esc(s.name)}. Let's have a moment of silence.<br>` : "")
-    + `${esc(s.name)}: ${what} marked as ${watched ? "" : "not "}${verb}`;
-  if (changed.length) offerUndo(html, () => post("/api/watch", {show:s.name, ids:changed, watched:!watched}), goodbye ? 15 : 10);
+    + `${what} marked as ${watched ? "" : "not "}${verb}`;
+  // A quick 2-second toast; the farewell stays longer so it can be read.
+  if (changed.length) offerUndo(html, () => post("/api/watch", {show:s.name, ids:changed, watched:!watched}), goodbye ? 15 : 2);
   post("/api/watch", {show:s.name, ids, watched});
 }
 

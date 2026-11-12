@@ -145,15 +145,19 @@ window.cloud = (() => {
     state = s;
   }
 
-  // Pending is read before the tracker, so an action can't vanish while a sync is folding it in.
+  // One listing gives the current version of both files from the same commit, so a sync folding in saved
+  // changes can never make one vanish. Files are downloaded only when they changed. web.json is the slim
+  // copy the sync writes for this page; tracker.json is the fallback.
   async function refresh(force) {
-    const meta = await gh("/contents/pending.json");
-    const commits = await gh("/commits?path=tracker.json&per_page=1");
-    const newTracker = commits[0] && commits[0].sha;
-    const changed = force || newTracker !== trackerSha || meta.sha !== pendingSha;
-    pendingSha = meta.sha;
-    pending = JSON.parse(decode(meta.content));
-    if (force || newTracker !== trackerSha) { baseText = await gh("/contents/tracker.json", {raw: true}); trackerSha = newTracker; }
+    const files = await gh("/contents");
+    const sha = name => (files.find(f => f.name === name) || {}).sha;
+    const dataSha = sha("web.json") || sha("tracker.json"), newPending = sha("pending.json");
+    const changed = force || dataSha !== trackerSha || newPending !== pendingSha;
+    const [p, t] = await Promise.all([
+      force || newPending !== pendingSha ? (newPending ? gh("/git/blobs/" + newPending, {raw: true}) : "[]") : null,
+      force || dataSha !== trackerSha ? gh("/git/blobs/" + dataSha, {raw: true}) : null]);
+    if (p !== null) { pending = JSON.parse(p); pendingSha = newPending; }
+    if (t !== null) { baseText = t; trackerSha = dataSha; }
     if (changed) { rebuild(); saveCache(); }
     return changed;
   }
