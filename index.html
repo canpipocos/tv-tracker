@@ -6,56 +6,65 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'unsafe-inline'; img-src https:; connect-src 'self' https://api.github.com https://api.tvmaze.com; base-uri 'none'; form-action 'none'">
 <title>TV Tracker</title>
 <style>
-:root { color-scheme: light dark; --bg:#fbf6f1; --card:#fffdfb; --ink:#2b2833; --muted:#6a6573; --line:#ece4dc; --accent:#a23b5a; --warn:#fbe3ee; --tab:#dcd5f6; }
-@media (prefers-color-scheme: dark) { :root { --bg:#1b1922; --card:#26242e; --ink:#f0edf3; --muted:#aaa5b3; --line:#3a3743; --accent:#f0a0ba; --warn:#4a2c3a; --tab:#4b4378; } }
+:root { color-scheme: light dark; --bg:#f5f6f8; --card:#ffffff; --ink:#1c1f26; --muted:#6a7280; --line:#d4d8df; --tabline:#e3e6eb; --sep:#eceef2; --accent:#0f766e; --danger:#c1272d; --tomb:#fff4d6; --tomb-ink:#6b4a00; --tomb-line:#f3dd9b; --toast:#1f2329; --toast-ink:#ffffff; --toast-accent:#5eead4; }
+@media (prefers-color-scheme: dark) { :root { --bg:#121418; --card:#1c1f25; --ink:#e6e8ec; --muted:#9aa2ae; --line:#363b44; --tabline:#2a2e35; --sep:#2a2e35; --accent:#2dd4bf; --danger:#ff6b70; --tomb:#3a2f12; --tomb-ink:#f3d58a; --tomb-line:#5c4a1a; --toast:#2d333b; --toast-ink:#ffffff; --toast-accent:#5eead4; } }
 * { box-sizing:border-box; }
-body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
 main { max-width:820px; margin:auto; padding:24px 16px 64px; }
 header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-h1 { font-size:24px; margin:0; }
-.muted { color:var(--muted); font-size:14px; }
-button, select { font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:7px; padding:5px 10px; cursor:pointer; }
-#search { display:block; width:100%; margin-top:16px; font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:7px; padding:8px 12px; }
-nav { display:flex; gap:6px; flex-wrap:wrap; margin:18px 0; }
-nav button.on { background:var(--tab); border-color:var(--tab); font-weight:600; }
-.alerts { background:var(--warn); border-radius:8px; padding:10px 14px; margin-top:16px; font-size:14px; }
-.alerts div + div { margin-top:3px; }
-.show { background:var(--card); border:1px solid var(--line); border-radius:9px; margin-bottom:8px; }
+h1 { font-size:19px; font-weight:700; color:var(--accent); margin:0; }
+.muted { color:var(--muted); font-size:13px; }
+button, select { font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:5px 10px; cursor:pointer; }
+select { font-size:13px; }
+#search { display:block; width:100%; margin-top:16px; font:inherit; color:inherit; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+nav { display:flex; flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; margin:18px 0 12px; background:var(--card); box-shadow:inset 0 -1px 0 var(--tabline); }
+nav::-webkit-scrollbar { display:none; }
+nav button { flex:none; white-space:nowrap; background:none; border:0; border-bottom:2px solid transparent; border-radius:0; padding:10px 12px; color:var(--muted); font-size:14px; font-weight:600; }
+nav button.on { color:var(--accent); border-bottom-color:var(--accent); }
+#undo .alerts { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:10; display:flex; align-items:center; gap:14px; max-width:calc(100% - 32px); background:var(--toast); color:var(--toast-ink); border-radius:10px; padding:10px 16px; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,.25); }
+#undo button { background:none; border:0; padding:0; color:var(--toast-accent); font-weight:600; }
+.show { background:var(--card); border:0; border-radius:10px; margin-bottom:8px; }
 .row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 14px; cursor:pointer; }
-.name { font-weight:600; }
-.when { text-align:right; white-space:nowrap; font-size:14px; }
-.flag { color:var(--accent); font-size:13px; }
-.detail { border-top:1px solid var(--line); padding:12px 14px; }
-.tools { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; font-size:14px; }
-.season { display:flex; justify-content:space-between; width:100%; margin:6px 0 4px; font-size:14px; font-weight:600; text-align:left; }
+.name { font-size:15px; font-weight:600; }
+.when { text-align:right; white-space:nowrap; font-size:13px; color:var(--muted); }
+.when b { color:var(--ink); }
+.flag { color:var(--danger); font-size:12px; }
+.detail { border-top:1px solid var(--sep); padding:12px 14px; }
+.tools { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:10px; font-size:13px; }
+.season { display:flex; justify-content:space-between; width:100%; margin:6px 0 4px; padding:2px 0; background:none; border:0; border-radius:0; font-size:14px; font-weight:600; text-align:left; }
 .season .muted { font-weight:400; color:inherit; }
 .tvsearch { margin-top:12px; }
-.tvcard { display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--card); border:1px solid var(--line); border-radius:9px; margin-bottom:8px; padding:11px 14px; }
-.poster { width:40px; height:58px; flex:none; border-radius:4px; object-fit:cover; background:var(--line); }
+.tvcard { display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--card); border:0; border-radius:10px; margin-bottom:8px; padding:11px 14px; }
+.poster { width:40px; height:58px; flex:none; border-radius:5px; object-fit:cover; background:var(--sep); }
 .title { display:flex; align-items:center; gap:12px; min-width:0; }
 .rec-flex { display:flex; gap:12px; }
 .rec-flex .poster { width:64px; height:92px; }
 .rec-body { flex:1; min-width:0; }
 #alerts { margin-top:16px; overflow:clip; }
-.alert-item { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 14px; margin-bottom:6px; font-size:14px; cursor:pointer; touch-action:pan-y; user-select:none; }
+.alert-item { background:var(--card); border:0; border-radius:10px; padding:9px 14px; margin-bottom:6px; font-size:13px; cursor:pointer; touch-action:pan-y; user-select:none; }
 #tombs { position:sticky; top:8px; z-index:5; overflow:clip; }
-.tomb { background:var(--warn); border-radius:8px; padding:10px 14px; margin-bottom:8px; font-weight:600; cursor:grab; touch-action:pan-y; user-select:none; }
+.tomb { background:var(--tomb); color:var(--tomb-ink); border:1px solid var(--tomb-line); border-radius:10px; padding:10px 14px; margin-bottom:8px; font-weight:600; cursor:grab; touch-action:pan-y; user-select:none; }
 input[type="checkbox"] { appearance:none; -webkit-appearance:none; width:13px; height:13px; flex:none; margin:0; vertical-align:-1px; border:1.5px solid var(--muted); border-radius:50%; background:transparent; cursor:pointer; }
 input[type="checkbox"]:checked { background:var(--accent); border-color:var(--accent); }
 input[type="checkbox"]:indeterminate { background:linear-gradient(90deg, var(--accent) 50%, transparent 50%); border-color:var(--accent); }
 input[type="checkbox"]:disabled { opacity:.35; cursor:default; }
-.tools-bottom { margin:14px 0 0; }
+.tools-bottom { margin:14px 0 0; padding-top:12px; border-top:1px solid var(--sep); }
 .rec { padding:11px 14px; }
 .heads { display:flex; gap:8px; margin-top:8px; }
-.heads img { width:56px; height:56px; border-radius:50%; object-fit:cover; object-position:top; background:var(--line); }
+.heads img { width:56px; height:56px; border-radius:50%; object-fit:cover; object-position:top; background:var(--sep); }
 .rec-tools { margin:8px 0 0; justify-content:space-between; }
-.remove { margin-left:auto; color:var(--accent); }
+.remove { margin-left:auto; color:var(--danger); background:none; border:0; padding:0; font-size:13px; }
 .seasonbar { display:flex; align-items:center; gap:8px; }
+.seasonbar:not(:first-child) { border-top:1px solid var(--sep); margin-top:8px; padding-top:6px; }
 .seasonbar .season { flex:1; min-width:0; }
-.ep { display:flex; align-items:center; gap:9px; padding:3px 0; font-size:14px; }
+.ep { display:flex; align-items:center; gap:9px; padding:3px 0; font-size:13px; }
 .ep label { flex:1; min-width:0; }
 .ep.future { color:var(--muted); }
-.plot { color:var(--muted); font-size:13px; margin:0 0 6px 24px; }
+.plot { color:var(--muted); font-size:12px; margin:0 0 6px 24px; }
+.info { min-width:0; }
+.nextep { font-size:13px; margin-top:2px; }
+.nextplot { color:var(--muted); font-size:12px; margin-top:2px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+.when input[type="checkbox"] { width:16px; height:16px; }
 </style>
 </head>
 <body>
@@ -164,16 +173,50 @@ function detail(s, f) {
     const aired = eps.filter(e => e.date && e.date <= state.today);
     const airedSeen = aired.filter(e => f.seen.has(e.id)).length;
     const box = `<input type="checkbox" data-all="${n}" aria-label="Mark all of ${esc((s.season_names || {})[n] || "season " + n)} as ${s.mangaupdates_id ? "read" : "watched"}" ${aired.length && airedSeen === aired.length ? "checked" : ""} ${aired.length ? "" : "disabled"} data-partial="${airedSeen && airedSeen < aired.length ? 1 : 0}">`;
-    return `<div class="seasonbar">${box}<button class="season" data-season="${n}" aria-expanded="${expanded}"><span>${esc((s.season_names || {})[n] || "Season " + n)}${fullDrop(s, n) ? " · Full season" : ""}</span><span class="muted">${done}/${eps.length} ${s.mangaupdates_id ? "read" : "watched"}</span></button></div>` + (!expanded ? "" : eps.map(e => {
+    return `<div class="seasonbar">${box}<button class="season" data-season="${n}" aria-expanded="${expanded}"><span>${esc((s.season_names || {})[n] || "Season " + n)}${fullDrop(s, n) ? " · Full season" : ""}</span><span class="muted">${done}/${eps.length} ${s.mangaupdates_id ? "read" : "watched"}</span></button></div>` + (!expanded ? "" : eps.map(raw => {
+    const e = withLive(raw);
     const future = !e.date || e.date > state.today;
     return `<div class="ep ${future ? "future" : ""}"><label><input type="checkbox" data-ep="${e.id}" ${f.seen.has(e.id) ? "checked" : ""}> ${code(e)}${e.name && !/^tba$/i.test(e.name) ? " - " + esc(e.name) : ""}</label>
       <span class="muted">${e.date && !e.undated ? pretty(e.date) + (e.projected ? " (expected)" : "") : ""}</span>
-      </div>${!future && !f.seen.has(e.id) && e.plot ? `<div class="plot">${esc(e.plot)}</div>` : ""}`;
+      </div>${!f.seen.has(e.id) && e.plot ? `<div class="plot">${esc(e.plot)}</div>` : ""}`;
     }).join(""));
   }).join("");
   return `<div class="detail">${body || `<div class="muted">No episodes listed yet.</div>`}
     <div class="tools tools-bottom"><select data-status aria-label="Status">${options}</select>
     <button class="remove" data-remove>Remove show</button></div></div>`;
+}
+
+// Plots the last sync didn't have yet (TVmaze often adds them on release day), fetched live once per page load.
+const live = {}, asked = new Set();
+const withLive = e => { const l = live[e.id]; return !l ? e : {...e, name: e.name && !/^tba$/i.test(e.name) ? e.name : l.name, plot: e.plot || l.plot}; };
+
+// Same as one_line in tracker.py: the first sentence of a TVmaze summary, so later twists aren't spoiled.
+function oneLine(summary, limit = 140) {
+  const text = new DOMParser().parseFromString((summary || "").replace(/<[^>]+>/g, " "), "text/html").body.textContent.split(/\s+/).join(" ").trim();
+  let end = text.length;
+  for (const m of text.matchAll(/[.!?](?=\s+[A-Z"“'])/g)) {
+    const last = text.slice(0, m.index).split(" ").pop();
+    if (!["Dr", "Mr", "Mrs", "Ms", "St", "Jr", "Sr", "vs"].includes(last) && last.length > 1) { end = m.index + 1; break; }
+  }
+  const sentence = text.slice(0, end);
+  return sentence.length > limit ? sentence.slice(0, limit).replace(/ \S*$/, "") + "…" : sentence;
+}
+
+async function fillMissing(pairs) {
+  const todo = pairs.filter(([s, e]) => !e.plot && !asked.has(e.id) && s.tvmaze_id && !s.mangaupdates_id && Number.isInteger(e.e)).slice(0, 30);
+  if (!todo.length) return;
+  todo.forEach(([, e]) => asked.add(e.id));
+  let found = false;
+  for (const [s, e] of todo) {
+    try {
+      const r = await fetch(`https://api.tvmaze.com/shows/${s.tvmaze_id}/episodebynumber?season=${e.s}&number=${e.e}`);
+      if (!r.ok) continue;
+      const d = await r.json();
+      const plot = oneLine(d.summary);
+      if (plot) { live[e.id] = {name: d.name || "", plot}; found = true; }
+    } catch (err) {}
+  }
+  if (found) render();
 }
 
 function render() {
@@ -190,11 +233,16 @@ function render() {
   document.getElementById("tabs").innerHTML = TABS.map(t => `<button class="${t === tab && !query ? "on" : ""}" data-tab="${t}">${t}</button>`).join("");
   if (tab === "For You" && !query) return renderRecommendations();
   const rows = chosen().sort((a, b) => (b[1].backlog.length > 0) - (a[1].backlog.length > 0));
+  const nextUp = f => tab === "Watching" && !query && f.backlog[0] ? withLive(f.backlog[0]) : null;  // Watching cards show the next episode to tick
+  const epTitle = e => code(e) + (e.name && !/^tba$/i.test(e.name) ? " - " + esc(e.name) : "");
   document.getElementById("list").innerHTML = rows.map(([s, f], i) => `<div class="show" data-i="${i}">
-    <div class="row"><div class="title">${thumb(s.poster)}<div><div class="name">${({"One Piece (Manga)":"📖 ", "One Piece (Anime)":"🐲 "})[s.name] || ""}${esc(s.name)}</div>${s.match !== "ok" && s.match !== "manual" ? `<div class="flag">${s.match === "review" ? "Matched to " + esc(s.tvmaze_name) + ", please check" : "Not found on TVmaze"}</div>` : ""}</div></div>
-    <div class="when">${line(s, f)}</div></div>
+    <div class="row"><div class="title">${thumb(s.poster)}<div class="info"><div class="name">${({"One Piece (Manga)":"📖 ", "One Piece (Anime)":"🐲 "})[s.name] || ""}${esc(s.name)}</div>${s.match !== "ok" && s.match !== "manual" ? `<div class="flag">${s.match === "review" ? "Matched to " + esc(s.tvmaze_name) + ", please check" : "Not found on TVmaze"}</div>` : ""}${nextUp(f) ? `<div class="nextep">${epTitle(nextUp(f))}</div>${nextUp(f).plot ? `<div class="nextplot">${esc(nextUp(f).plot)}</div>` : ""}` : ""}</div></div>
+    <div class="when">${nextUp(f) ? `<input type="checkbox" data-next="${nextUp(f).id}" aria-label="Mark ${code(nextUp(f))} as watched">` : line(s, f)}</div></div>
     ${open === s.name ? detail(s, f) : ""}</div>`).join("") || `<p class="muted">Nothing here.</p>`;
   document.querySelectorAll(".show").forEach(el => wire(el, rows[+el.dataset.i]));
+  const wanted = [];
+  rows.forEach(([s, f]) => { if (nextUp(f)) wanted.push([s, f.backlog[0]]); if (open === s.name) f.backlog.forEach(e => wanted.push([s, e])); });
+  fillMissing(wanted);
   renderTvSearch();
 }
 
@@ -265,6 +313,10 @@ function wire(el, [s]) {
     };
   });
   el.querySelectorAll("[data-ep]").forEach(c => c.onchange = () => tick(s, [+c.dataset.ep], c.checked));
+  el.querySelectorAll("[data-next]").forEach(c => {
+    c.onclick = e => e.stopPropagation();  // ticking doesn't open the show
+    c.onchange = () => tick(s, [+c.dataset.next], c.checked);
+  });
   const remove = el.querySelector("[data-remove]");
   if (remove) remove.onclick = () => {
     if (!confirm(`Remove ${s.name}?\n\nIt will disappear from every tab, along with your progress.`)) return;
